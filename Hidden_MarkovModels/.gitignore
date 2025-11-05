@@ -1,0 +1,45 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyd
+*.egg-info/
+.eggs/
+
+# Virtual envs
+.env/
+.venv/
+env/
+motion-cv/
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE/editor
+.vscode/
+.idea/
+.ipynb_checkpoints/
+.pytest_cache/
+
+# Build / logs / dist
+build/
+dist/
+*.log
+
+# Project outputs & artifacts
+outputs/
+out/
+*.png
+*.csv
+*.npy
+*.nii
+*.nii.gz
+*.stl
+*.gif
+*.mp4
+
+# DICOM 
+*.dcm
+DICOM/
+dicom/
