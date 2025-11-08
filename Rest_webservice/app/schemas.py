@@ -8,7 +8,6 @@ class Login(BaseModel):
     email: EmailStr
     password: str
 
-# (You can keep this too if you use it anywhere else)
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
@@ -31,7 +30,7 @@ class UserOut(BaseModel):
     email: EmailStr
     role: str
 
-# Optional token shape (not required by routers.py but fine to keep)
+# Optional token shape 
 class TokenPair(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -52,6 +51,7 @@ class EventIn(BaseModel):
     role: Optional[str] = None
     geo: Optional[str] = None
     age: Optional[int] = None
+
 
 class EventOut(BaseModel):
     id: int

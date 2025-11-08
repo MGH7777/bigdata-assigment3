@@ -8,12 +8,10 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import jwt
 from passlib.hash import pbkdf2_sha256 as hasher  # portable, no C wheels
 
-# --- JWT settings ---
 JWT_SECRET: str = os.getenv("JWT_SECRET", "dev-secret")
 JWT_ALGO: str = "HS256"
 JWT_EXPIRE_MINUTES: int = 60  # default token lifetime
 
-# HTTP Bearer auth (Swagger "Authorize" button)
 security = HTTPBearer(auto_error=False)
 
 

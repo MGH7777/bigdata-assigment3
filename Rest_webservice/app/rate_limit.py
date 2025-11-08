@@ -6,7 +6,6 @@ from fastapi import HTTPException, Request, Depends
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
-# Try Redis; if not available, use in-process memory
 try:
     import redis  # type: ignore
     _r = redis.from_url(REDIS_URL, decode_responses=True)
@@ -20,15 +19,10 @@ except Exception:
     _r = None
     _redis_ok = False
 
-# >>> Shared fallback store (module-global, NOT per-instance)
 _MEM: Dict[str, Tuple[int, int]] = {}  # bucket_key -> (count, expires_ts)
 
 class TokenBucket:
-    """
-    Fixed-window counter with Redis when available; otherwise shared in-memory map.
-    per: window length in seconds (int)
-    burst: max requests allowed within that window
-    """
+
     def __init__(self, key: str, per: int = 1, burst: int = 20):
         self.key = key
         self.per = max(int(per), 1)
@@ -50,7 +44,6 @@ class TokenBucket:
             _r.incr(bucket_key)
             return True
 
-        # In-memory fallback (shared)
         count, expires = _MEM.get(bucket_key, (0, now + self.per))
         if now > expires:
             count, expires = 0, now + self.per
@@ -61,9 +54,6 @@ class TokenBucket:
 
 
 def rate_limiter(resource_key: str, per: int = 1, burst: int = 20):
-    """
-    FastAPI dependency factory: applies a limit per client IP per resource_key.
-    """
     def _dep(request: Request):
         ip = request.client.host if request.client else "?"
         bucket = TokenBucket(f"{resource_key}:{ip}", per=per, burst=burst)
