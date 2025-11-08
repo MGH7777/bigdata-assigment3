@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Registration API Client</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; }
+    h1 { margin-bottom: 8px; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin: 12px 0; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    label { display: block; font-size: 0.9rem; margin-top: 8px; }
+    input, select, button { padding: 8px; font-size: 1rem; border-radius: 8px; border: 1px solid #ccc; }
+    button { cursor: pointer; }
+    pre { background: #fafafa; padding: 12px; border: 1px solid #eee; border-radius: 8px; overflow: auto; }
+    .muted { color: #666; } .ok { color:#0a7; } .err { color:#b00; }
+    .badge { display:inline-block; padding:2px 6px; border-radius:8px; background:#eee; font-size:.8rem; }
+  </style>
+</head>
+<body>
+  <h1>Registration API Client <span class="badge" id="status">disconnected</span></h1>
+  <div class="muted">API base: <code id="base"></code></div>
+
+  <div class="card">
+    <h2>Auth</h2>
+    <div class="row">
+      <div>
+        <label>Email <input id="reg_email" type="email" placeholder="you@example.com" /></label>
+        <label>Password <input id="reg_password" type="password" placeholder="••••••••" /></label>
+        <label>Role
+          <select id="reg_role">
+            <option value="user">user</option>
+            <option value="admin">admin</option>
+          </select>
+        </label>
+        <button id="btn_register">Register</button>
+      </div>
+      <div>
+        <label>Email <input id="login_email" type="email" placeholder="you@example.com" /></label>
+        <label>Password <input id="login_password" type="password" placeholder="••••••••" /></label>
+        <button id="btn_login">Login</button>
+        <div class="muted">JWT saved to <code>localStorage</code>. <button id="btn_logout">Logout</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Users (admin)</h2>
+    <button id="btn_list_users">List Users</button>
+    <pre id="users_out" class="muted">No data</pre>
+  </div>
+
+  <div class="card">
+    <h2>Events & Segmentation</h2>
+    <label>User ID <input id="evt_user_id" type="number" value="1" /></label>
+    <label>Symptom Codes (comma-separated) <input id="evt_codes" placeholder="A,B,C" /></label>
+    <label>Geo <input id="evt_geo" placeholder="NO" /></label>
+    <label>Age <input id="evt_age" type="number" placeholder="22" /></label>
+    <button id="btn_create_event">Create Event</button>
+    <pre id="events_out" class="muted">No data</pre>
+  </div>
+
+  <div class="card">
+    <h2>Analytics</h2>
+    <label>Min Support <input id="min_support" type="number" value="5" /></label>
+    <button id="btn_pairs">Frequent Pairs</button>
+    <button id="btn_features">Feature Extraction</button>
+    <pre id="analytics_out" class="muted">No data</pre>
+  </div>
+
+  <script>
+    // Use 127.0.0.1 to avoid origin/CORS mismatches
+    const API_BASE = 'http://127.0.0.1:8000';
+    document.getElementById('base').textContent = API_BASE;
+    const TOKEN_KEY = 'access_token';
+
+    function token(){ return localStorage.getItem(TOKEN_KEY) || ''; }
+    function authHeaders(){ return token() ? { 'Authorization': `Bearer ${token()}` } : {}; }
+    function jsonHeaders(extra={}){ return { 'Content-Type':'application/json', ...extra }; }
+    function show(el, data, err=false){
+      el.classList.remove('muted');
+      el.classList.toggle('err', err);
+      el.classList.toggle('ok', !err);
+      el.textContent = typeof data==='string' ? data : JSON.stringify(data,null,2);
+    }
+    async function ping(){
+      try{ const r=await fetch(`${API_BASE}/health`); setStatus(r.ok); }
+      catch{ setStatus(false); }
+    }
+    function setStatus(ok){
+      const s=document.getElementById('status');
+      s.textContent= ok?'connected':'disconnected';
+      s.style.background= ok?'#e6fff5':'#ffecec';
+      s.style.color= ok?'#0a7':'#b00';
+    }
+    ping();
+
+    // Register
+    document.getElementById('btn_register').onclick = async () => {
+      const email = document.getElementById('reg_email').value.trim();
+      const password = document.getElementById('reg_password').value;
+      const role = document.getElementById('reg_role').value;
+      const out = document.getElementById('users_out');
+      try {
+        const res = await fetch(`${API_BASE}/users`, {
+          method: 'POST',
+          headers: jsonHeaders(),
+          body: JSON.stringify({ email, password, role })
+        });
+        show(out, await res.json(), !res.ok);
+      } catch(e){ show(out, String(e), true); }
+    };
+
+    // Login
+    document.getElementById('btn_login').onclick = async () => {
+      const email = document.getElementById('login_email').value.trim();
+      const password = document.getElementById('login_password').value;
+      const out = document.getElementById('users_out');
+      try {
+        const res = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: jsonHeaders(),
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if(res.ok && data.access_token){
+          localStorage.setItem(TOKEN_KEY, data.access_token);
+          show(out, { message:'Logged in', ...data });
+        } else {
+          show(out, data, true);
+        }
+      } catch(e){ show(out, String(e), true); }
+    };
+
+    // Logout
+    document.getElementById('btn_logout').onclick = () => {
+      localStorage.removeItem(TOKEN_KEY);
+      show(document.getElementById('users_out'), { message:'Logged out' });
+    };
+
+    // List users (admin)
+    document.getElementById('btn_list_users').onclick = async () => {
+      const out = document.getElementById('users_out');
+      try {
+        const res = await fetch(`${API_BASE}/users`, { headers: authHeaders() });
+        show(out, await res.json(), !res.ok);
+      } catch(e){ show(out, String(e), true); }
+    };
+
+    // Create event
+    document.getElementById('btn_create_event').onclick = async () => {
+      const user_id = Number(document.getElementById('evt_user_id').value);
+      const codes = document.getElementById('evt_codes').value.split(',').map(s => s.trim()).filter(Boolean);
+      const geo = document.getElementById('evt_geo').value.trim() || null;
+      const age = document.getElementById('evt_age').value ? Number(document.getElementById('evt_age').value) : null;
+      const out = document.getElementById('events_out');
+      try {
+        const res = await fetch(`${API_BASE}/events`, {
+          method:'POST',
+          headers: jsonHeaders(authHeaders()),
+          body: JSON.stringify({ user_id, payload:{symptom_codes: codes}, geo, age })
+        });
+        show(out, await res.json(), !res.ok);
+      } catch(e){ show(out, String(e), true); }
+    };
+
+    // Analytics: frequent pairs (admin)
+    document.getElementById('btn_pairs').onclick = async () => {
+      const k = Number(document.getElementById('min_support').value || 5);
+      const out = document.getElementById('analytics_out');
+      try {
+        const res = await fetch(
+          `${API_BASE}/analytics/frequent-pairs?min_support=${k}`,
+          { headers: authHeaders() } // send JWT
+        );
+        show(out, await res.json(), !res.ok);
+      } catch(e){ show(out, String(e), true); }
+    };
+
+    // Analytics: feature extraction (admin)
+    document.getElementById('btn_features').onclick = async () => {
+      const out = document.getElementById('analytics_out');
+      try {
+        const res = await fetch(
+          `${API_BASE}/analytics/features`,
+          { headers: authHeaders() } // send JWT
+        );
+        show(out, await res.json(), !res.ok);
+      } catch(e){ show(out, String(e), true); }
+    };
+  </script>
+</body>
+</html>
