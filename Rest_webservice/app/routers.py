@@ -22,9 +22,7 @@ from app.rate_limit import rate_limiter
 router = APIRouter()
 
 
-# ----------------------------
 # HATEOAS link helpers
-# ----------------------------
 def user_links(uid: int) -> Dict[str, Any]:
     return {
         "self": {"href": f"/users/{uid}"},
@@ -42,19 +40,13 @@ def collection_links(path: str) -> Dict[str, Any]:
     return {"self": {"href": path}}
 
 
-# ----------------------------
 # Health
-# ----------------------------
 @router.get("/health", response_model=dict)
 def health() -> Dict[str, str]:
     return {"status": "ok"}
 
 
-# ----------------------------
-# Auth
-# (Intentionally not rate-limited aggressively for UX;
-#  you may add rate_limiter("auth:login", per=1, burst=10) if desired.)
-# ----------------------------
+
 @router.post("/auth/login", response_model=dict)
 def login(data: schemas.Login, db: Session = Depends(get_db)) -> Dict[str, Any]:
     user = db.query(models.User).filter(models.User.email == data.email).first()
@@ -65,9 +57,7 @@ def login(data: schemas.Login, db: Session = Depends(get_db)) -> Dict[str, Any]:
     return {"access_token": token, "token_type": "bearer"}
 
 
-# ----------------------------
 # Users (Admin only)
-# ----------------------------
 @router.get(
     "/users",
     response_model=dict,
@@ -164,9 +154,7 @@ def delete_user(uid: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
     return {"data": {"deleted": uid}}
 
 
-# ----------------------------
 # Symptoms (admin create; adjust if you want public)
-# ----------------------------
 @router.post(
     "/symptoms",
     response_model=dict,
@@ -184,9 +172,7 @@ def create_symptom(data: schemas.SymptomIn, db: Session = Depends(get_db)) -> Di
     return {"data": {"id": s.id, "code": s.code, "name": s.name}}
 
 
-# ----------------------------
 # Events (anyone with/without token; segment uses provided or token claims)
-# ----------------------------
 @router.post(
     "/events",
     response_model=dict,
@@ -206,9 +192,7 @@ def create_event(
     return {"data": {"id": e.id, "segment": e.segment}, "_links": event_links(e.id)}
 
 
-# ----------------------------
 # Analytics (admin only)
-# ----------------------------
 @router.get(
     "/analytics/frequent-pairs",
     response_model=dict,

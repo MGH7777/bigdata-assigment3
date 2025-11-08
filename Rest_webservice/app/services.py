@@ -16,6 +16,7 @@ def make_segment(role: str | None = None, geo: str | None = None, age: int | Non
 def frequent_pairs(events: List[Dict], min_support: int = 5) -> Dict[str, int]:
     counts: Counter = Counter()
     for e in events:
+        
         codes = set(e.get("payload", {}).get("symptom_codes", []))
         for a, b in combinations(sorted(codes), 2):
             counts[(a, b)] += 1
