@@ -75,7 +75,7 @@ if __name__ == "__main__":
     if frames is None:
         frames = make_synthetic_video()
 
-    # Compare Full vs Diamond (same decision logic; different ME on MEDIUM frames)
+    # Compare
     # low_q/high_q (percentiles), low_diff_threshold (pixel)
     result_full = process_video(frames, block=16, search_range=8, method="full",
                                 calibration_frames=20, low_q=40.0, high_q=80.0,
@@ -83,8 +83,11 @@ if __name__ == "__main__":
     result_dia  = process_video(frames, block=16, search_range=8, method="diamond",
                                 calibration_frames=20, low_q=40.0, high_q=80.0,
                                 low_diff_threshold=10)
+    result_tss  = process_video(frames, block=16, search_range=8, method="tss",
+                            calibration_frames=20, low_q=40.0, high_q=80.0,
+                            low_diff_threshold=10)
 
-    # Visualize one ME frame from diamond (if any) on the actual current frame
+
     me_frames = list(result_dia["outputs"]["ME"])
     if me_frames:
         sample = me_frames[len(me_frames)//2]
@@ -95,7 +98,6 @@ if __name__ == "__main__":
         heat = diff_heatmap(sample["diff"])
         cv2.imwrite("out/diff_heatmap.png", heat)
 
-    # Per-frame decisions (both runs) — metrics for ALL classes
     rows_full = [[d["frame"], d["mad"], d["raw_mad"], d["class"], d["time_ms"],
                   d["mean_cost"], d["psnr"], d["p90_diff"], d.get("low_diff_ratio")]
                  for d in result_full["decisions"]]
@@ -114,15 +116,19 @@ if __name__ == "__main__":
         rows_dia
     )
 
-    # Method-level metrics table (only MEDIUM frames have timing/psnr)
     rows_metrics = []
     for e in result_full["outputs"]["ME"]:
         rows_metrics.append(["full", e["index"], e["time_ms"], e["mean_cost"], e["psnr"]])
     for e in result_dia["outputs"]["ME"]:
         rows_metrics.append(["diamond", e["index"], e["time_ms"], e["mean_cost"], e["psnr"]])
+    for e in result_tss["outputs"]["ME"]:
+        rows_metrics.append(["tss", e["index"], e["time_ms"], e["mean_cost"], e["psnr"]])
+
     safe_write_csv("out/method_metrics.csv",
-                   ["method", "frame_index", "time_ms", "mean_sad_cost", "psnr_compensation"],
-                   rows_metrics)
+                ["method", "frame_index", "time_ms", "mean_sad_cost", "psnr_compensation"],
+                rows_metrics)
+
+
 
     def summarize(name, res):
         from collections import Counter
@@ -134,5 +140,7 @@ if __name__ == "__main__":
 
     summarize("full", result_full)
     summarize("diamond", result_dia)
+    summarize("tss", result_tss)
+
 
     print("Saved outputs to ./out")
