@@ -131,6 +131,46 @@ def diamond_search(curr: np.ndarray, ref: np.ndarray, by: int, bx: int,
 
     return best_dy, best_dx, int(best_cost)
 
+
+def block_match_tss(curr: np.ndarray, ref: np.ndarray, by: int, bx: int,
+                    block: int, search: int) -> Tuple[int, int, int]:
+    """
+    Three-Step Search (TSS) centered at block (by,bx).
+    Returns (best_dy, best_dx, best_cost) like full/diamond.
+    """
+    H, W = curr.shape
+    y0, x0 = by * block, bx * block
+    cur_blk = curr[y0:y0 + block, x0:x0 + block]
+
+    s = 1
+    while (s << 1) <= search:
+        s <<= 1
+
+    def cost_at(dy, dx):
+        yy = clip_range(y0 + dy, 0, H - block)
+        xx = clip_range(x0 + dx, 0, W - block)
+        return sad(cur_blk, ref[yy:yy + block, xx:xx + block])
+
+    best_dy, best_dx = 0, 0
+    best_cost = cost_at(0, 0)
+
+    while s >= 1:
+        improved = False
+        for dy in (-s, 0, s):
+            for dx in (-s, 0, s):
+                if dy == 0 and dx == 0:
+                    continue
+                cy, cx = best_dy + dy, best_dx + dx
+                if max(abs(cy), abs(cx)) > search:
+                    continue
+                c = cost_at(cy, cx)
+                if c < best_cost:
+                    best_cost, best_dy, best_dx, improved = c, cy, cx, True
+        s //= 2
+
+    return best_dy, best_dx, int(best_cost)
+
+
 def estimate_motion(curr: np.ndarray, ref: np.ndarray, block: int = 16,
                     search_range: int = 8, method: str = "full") -> Dict[str, np.ndarray]:
     H, W = curr.shape
@@ -145,10 +185,18 @@ def estimate_motion(curr: np.ndarray, ref: np.ndarray, block: int = 16,
                 dy, dx, c = full_search_bma(curr, ref, by, bx, block, search_range)
             elif method == "diamond":
                 dy, dx, c = diamond_search(curr, ref, by, bx, block, search_range)
+            elif method == "tss":
+                dy, dx, c = block_match_tss(curr, ref, by, bx, block, search_range)
             else:
                 raise ValueError("Unknown method: " + method)
-            mv_y[by, bx], mv_x[by, bx], cost[by, bx] = dy, dx, c
+
+            mv_y[by, bx] = dy
+            mv_x[by, bx] = dx
+            cost[by, bx] = c
+
     return {"mv_y": mv_y, "mv_x": mv_x, "cost": cost}
+
+
 
 def motion_compensate(ref: np.ndarray, mv_y: np.ndarray, mv_x: np.ndarray, block: int = 16) -> np.ndarray:
     H, W = ref.shape
