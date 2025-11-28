@@ -1,4 +1,4 @@
-# app/routers.py
+
 from __future__ import annotations
 
 from typing import Dict, Any
@@ -57,7 +57,7 @@ def login(data: schemas.Login, db: Session = Depends(get_db)) -> Dict[str, Any]:
     return {"access_token": token, "token_type": "bearer"}
 
 
-# Users (Admin only)
+# Users 
 @router.get(
     "/users",
     response_model=dict,
@@ -154,7 +154,7 @@ def delete_user(uid: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
     return {"data": {"deleted": uid}}
 
 
-# Symptoms (admin create; adjust if you want public)
+
 @router.post(
     "/symptoms",
     response_model=dict,

@@ -27,4 +27,6 @@ class TrackingMiddleware(BaseHTTPMiddleware):
                 segment=segment,
             ))
             db.commit()
-        return response
+        return response 
+    
+    

@@ -31,3 +31,4 @@ def extract_symptom_features(events: List[Dict]) -> Dict:
         "total_unique": len(c),
         "total_occurrences": sum(c.values()),
     }
+

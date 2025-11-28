@@ -72,3 +72,4 @@ def require_roles(roles: list[str]):
         if role not in roles:
             raise HTTPException(status_code=403, detail="Insufficient role")
     return _dep
+
